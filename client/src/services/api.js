@@ -80,6 +80,14 @@ export const deleteWorkspace = async (workspaceId) => {
   return response.data;
 };
 
+/**
+ * Sync workspace from PostgreSQL to MongoDB
+ */
+export const syncWorkspace = async (workspaceId) => {
+  const response = await api.post(`/workspace/${workspaceId}/sync`);
+  return response.data;
+};
+
 // ==================== TABLE APIs ====================
 
 /**

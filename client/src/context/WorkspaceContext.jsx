@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import * as api from "../services/api";
 
 const WorkspaceContext = createContext();
@@ -20,6 +20,10 @@ export const WorkspaceProvider = ({ children }) => {
   const [queryError, setQueryError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+
+  const autoSaveTimerRef = useRef(null);
 
   // Load workspaces on mount
   useEffect(() => {
@@ -236,6 +240,50 @@ export const WorkspaceProvider = ({ children }) => {
     setQueryError(null);
   };
 
+  // Sync workspace (save to MongoDB)
+  const syncWorkspace = async () => {
+    if (!currentWorkspace) return;
+
+    try {
+      const response = await api.syncWorkspace(currentWorkspace.workspaceId);
+      setHasUnsavedChanges(false);
+      setLastSyncTime(new Date());
+      console.log("Workspace synced:", response);
+      return response;
+    } catch (error) {
+      console.error("Error syncing workspace:", error);
+      throw error;
+    }
+  };
+
+  // Auto-save with debouncing
+  const scheduleAutoSave = () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (hasUnsavedChanges) {
+        syncWorkspace();
+      }
+    }, 30000); // 30 seconds debounce
+  };
+
+  // Mark workspace as having unsaved changes
+  const markDirty = () => {
+    setHasUnsavedChanges(true);
+    scheduleAutoSave();
+  };
+
+  // Cleanup auto-save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
   const value = {
     // State
     currentWorkspace,
@@ -246,6 +294,8 @@ export const WorkspaceProvider = ({ children }) => {
     queryError,
     isLoading,
     isExecuting,
+    hasUnsavedChanges,
+    lastSyncTime,
 
     // Actions
     setQueryText,
@@ -260,6 +310,8 @@ export const WorkspaceProvider = ({ children }) => {
     getHint,
     clearResults,
     loadWorkspaces,
+    syncWorkspace,
+    markDirty,
   };
 
   return (

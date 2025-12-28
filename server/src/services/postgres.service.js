@@ -357,6 +357,109 @@ async function verifyAndSyncWorkspace(workspaceId, schemaName, tables) {
   }
 }
 
+/**
+ * Sync workspace from PostgreSQL to MongoDB
+ * Extracts current state from PostgreSQL and returns data for MongoDB update
+ * @param {string} schemaName - PostgreSQL schema name
+ * @returns {Promise<Object>} Tables data with columns and rows
+ */
+async function syncWorkspaceFromPostgres(schemaName) {
+  try {
+    // Get all tables in schema
+    const tableNames = await getTablesInSchema(schemaName);
+
+    if (tableNames.length === 0) {
+      return {
+        success: true,
+        tables: [],
+        message: "No tables to sync",
+      };
+    }
+
+    const tables = [];
+
+    // For each table, get structure and data
+    for (const tableName of tableNames) {
+      try {
+        // Get table structure (columns)
+        const columns = await getTableStructure(schemaName, tableName);
+
+        // Format columns for MongoDB
+        const formattedColumns = columns
+          .filter((col) => col.column_name !== "id") // Exclude auto-generated ID
+          .map((col) => ({
+            columnName: col.column_name,
+            dataType: mapPostgresToFriendlyType(col.data_type),
+          }));
+
+        // Get table data (rows)
+        const rows = await getTableData(schemaName, tableName);
+
+        // Format rows - remove the auto-generated ID column
+        const formattedRows = rows.map((row) => {
+          const { id, ...rowData } = row;
+          return rowData;
+        });
+
+        tables.push({
+          tableName,
+          columns: formattedColumns,
+          rows: formattedRows,
+          createdAt: new Date(),
+        });
+      } catch (error) {
+        console.error(`Error syncing table ${tableName}:`, error);
+        // Continue with other tables even if one fails
+      }
+    }
+
+    return {
+      success: true,
+      tables,
+      summary: {
+        totalTables: tableNames.length,
+        syncedTables: tables.length,
+      },
+    };
+  } catch (error) {
+    console.error("Error syncing workspace from PostgreSQL:", error);
+    throw error;
+  }
+}
+
+/**
+ * Map PostgreSQL data types back to friendly names
+ * Reverse of mapToPostgresType
+ */
+function mapPostgresToFriendlyType(pgType) {
+  const typeMap = {
+    integer: "INTEGER",
+    bigint: "BIGINT",
+    smallint: "SMALLINT",
+    text: "TEXT",
+    "character varying": "VARCHAR",
+    varchar: "VARCHAR",
+    char: "CHAR",
+    character: "CHAR",
+    real: "REAL",
+    "double precision": "DOUBLE",
+    numeric: "DECIMAL",
+    decimal: "DECIMAL",
+    boolean: "BOOLEAN",
+    date: "DATE",
+    time: "TIME",
+    "timestamp without time zone": "TIMESTAMP",
+    timestamp: "TIMESTAMP",
+    "timestamp with time zone": "TIMESTAMPTZ",
+    json: "JSON",
+    jsonb: "JSONB",
+    uuid: "UUID",
+    bytea: "BYTEA",
+  };
+
+  return typeMap[pgType.toLowerCase()] || pgType.toUpperCase();
+}
+
 module.exports = {
   createWorkspaceSchema,
   dropWorkspaceSchema,
@@ -370,4 +473,5 @@ module.exports = {
   schemaExists,
   reconstructWorkspace,
   verifyAndSyncWorkspace,
+  syncWorkspaceFromPostgres,
 };

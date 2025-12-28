@@ -6,6 +6,7 @@ const {
   updateWorkspace,
   deleteWorkspace,
   getAllWorkspaces,
+  syncWorkspace,
 } = require("../controllers/workspace.controller");
 const {
   createNewTable,
@@ -41,6 +42,9 @@ router.put(
 );
 router.delete("/workspace/:id", validateWorkspaceId, deleteWorkspace);
 router.get("/workspaces", getAllWorkspaces);
+
+// Workspace sync operation
+router.post("/workspace/:id/sync", validateWorkspaceId, syncWorkspace);
 
 // Table operations
 router.post(

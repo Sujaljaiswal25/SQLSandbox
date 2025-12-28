@@ -5,6 +5,7 @@ const {
   dropWorkspaceSchema,
   getTablesInSchema,
   verifyAndSyncWorkspace,
+  syncWorkspaceFromPostgres,
 } = require("../services/postgres.service");
 
 /**
@@ -230,10 +231,65 @@ async function getAllWorkspaces(req, res) {
   }
 }
 
+/**
+ * POST /api/workspace/:id/sync
+ * Sync workspace from PostgreSQL to MongoDB
+ * Saves current PostgreSQL state to MongoDB document
+ */
+async function syncWorkspace(req, res) {
+  try {
+    const { id } = req.params;
+
+    const workspace = await Workspace.findByWorkspaceId(id);
+
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        error: "Workspace not found",
+      });
+    }
+
+    // Extract current state from PostgreSQL
+    const syncResult = await syncWorkspaceFromPostgres(workspace.pgSchemaName);
+
+    if (!syncResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to sync workspace from PostgreSQL",
+      });
+    }
+
+    // Update MongoDB document with current state
+    workspace.tables = syncResult.tables;
+    workspace.updatedAt = new Date();
+    await workspace.save();
+
+    res.json({
+      success: true,
+      message: "Workspace synced successfully",
+      data: {
+        workspaceId: workspace.workspaceId,
+        name: workspace.name,
+        tables: workspace.tables,
+        updatedAt: workspace.updatedAt,
+      },
+      sync: syncResult.summary,
+    });
+  } catch (error) {
+    console.error("Error syncing workspace:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to sync workspace",
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   createWorkspace,
   getWorkspace,
   updateWorkspace,
   deleteWorkspace,
   getAllWorkspaces,
+  syncWorkspace,
 };

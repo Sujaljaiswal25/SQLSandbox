@@ -2,10 +2,31 @@ import { useState } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 
 const Navbar = () => {
-  const { currentWorkspace, workspaces, switchWorkspace, createWorkspace } =
-    useWorkspace();
+  const {
+    currentWorkspace,
+    workspaces,
+    switchWorkspace,
+    createWorkspace,
+    syncWorkspace,
+    hasUnsavedChanges,
+    lastSyncTime,
+  } = useWorkspace();
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!currentWorkspace) return;
+
+    try {
+      setIsSaving(true);
+      await syncWorkspace();
+    } catch (error) {
+      alert("Failed to save workspace");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleCreateWorkspace = async (e) => {
     e.preventDefault();
@@ -51,6 +72,53 @@ const Navbar = () => {
 
           {/* Workspace Selector */}
           <div className="flex items-center space-x-4">
+            {currentWorkspace && (
+              <button
+                onClick={handleSave}
+                disabled={isSaving || !hasUnsavedChanges}
+                className={`px-4 py-2 rounded-md transition-colors duration-200 flex items-center space-x-2 ${
+                  hasUnsavedChanges
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                }`}
+                title={
+                  lastSyncTime
+                    ? `Last saved: ${lastSyncTime.toLocaleTimeString()}`
+                    : "Not saved yet"
+                }
+              >
+                <svg
+                  className={`h-5 w-5 ${isSaving ? "animate-spin" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  {isSaving ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                    />
+                  )}
+                </svg>
+                <span>
+                  {isSaving
+                    ? "Saving..."
+                    : hasUnsavedChanges
+                    ? "Save"
+                    : "Saved"}
+                </span>
+              </button>
+            )}
+
             {!isCreating ? (
               <>
                 <select

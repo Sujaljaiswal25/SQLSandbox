@@ -6,6 +6,7 @@ const {
   getTablesInSchema,
   getTableStructure,
   getTableData,
+  syncWorkspaceFromPostgres,
 } = require("../services/postgres.service");
 const { isValidDataType } = require("../utils/dataTypeMapping.util");
 
@@ -72,12 +73,11 @@ async function createNewTable(req, res) {
     // Create table in PostgreSQL
     await createTable(workspace.pgSchemaName, tableName, columns);
 
-    // Add table to MongoDB workspace
-    workspace.tables.push({
-      tableName,
-      columns,
-      rows: [],
-    });
+    // Auto-sync: Update MongoDB with current PostgreSQL state
+    const syncResult = await syncWorkspaceFromPostgres(workspace.pgSchemaName);
+    if (syncResult.success) {
+      workspace.tables = syncResult.tables;
+    }
 
     await workspace.save();
 
@@ -263,9 +263,12 @@ async function insertData(req, res) {
     for (const row of rows) {
       const inserted = await insertRow(workspace.pgSchemaName, tableName, row);
       insertedRows.push(inserted);
+    }
 
-      // Also add to MongoDB metadata
-      table.rows.push(row);
+    // Auto-sync: Update MongoDB with current PostgreSQL state
+    const syncResult = await syncWorkspaceFromPostgres(workspace.pgSchemaName);
+    if (syncResult.success) {
+      workspace.tables = syncResult.tables;
     }
 
     await workspace.save();
