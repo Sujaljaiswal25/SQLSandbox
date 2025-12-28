@@ -212,17 +212,18 @@ export const WorkspaceProvider = ({ children }) => {
   };
 
   // Get hint
-  const getHint = async (tableContext = "") => {
+  const getHint = async ({ query, intent, error } = {}) => {
     if (!currentWorkspace) throw new Error("No workspace selected");
 
     try {
       const response = await api.getHint(
         currentWorkspace.workspaceId,
-        queryText,
-        tableContext
+        query || queryText,
+        intent,
+        error
       );
 
-      return response.data;
+      return response;
     } catch (error) {
       console.error("Error getting hint:", error);
       throw error;

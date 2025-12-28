@@ -1,16 +1,24 @@
 const Workspace = require("../models/workspace.model");
+const {
+  generateHint: generateLLMHint,
+  generateErrorHint,
+} = require("../services/llm.service");
 
 /**
  * POST /api/hint
- * Get AI-powered hint for query writing
+ * Get AI-powered hint for query writing using Google Gemini
  *
- * This is a placeholder implementation.
- * In production, this would integrate with an LLM API (OpenAI, Anthropic, etc.)
+ * Request Body:
+ * - workspaceId: string (required) - Workspace ID for schema context
+ * - query: string (optional) - User's current query attempt
+ * - intent: string (optional) - What user is trying to achieve
+ * - error: object (optional) - Error context if query failed
  */
 async function generateHint(req, res) {
   try {
-    const { workspaceId, query, tableContext } = req.body;
+    const { workspaceId, query, intent, error } = req.body;
 
+    // Validation
     if (!workspaceId) {
       return res.status(400).json({
         success: false,
@@ -18,7 +26,15 @@ async function generateHint(req, res) {
       });
     }
 
-    // Get workspace for context
+    if (!query && !intent) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Please provide either a query attempt or describe what you're trying to achieve",
+      });
+    }
+
+    // Get workspace for schema context
     const workspace = await Workspace.findByWorkspaceId(workspaceId);
 
     if (!workspace) {
@@ -28,58 +44,57 @@ async function generateHint(req, res) {
       });
     }
 
-    // Build context for LLM
-    const schemaContext = workspace.tables
-      .map((table) => {
-        const columns = table.columns
-          .map((col) => `  - ${col.columnName} (${col.dataType})`)
-          .join("\n");
+    // Check if workspace has tables
+    if (!workspace.tables || workspace.tables.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "No tables exist in this workspace. Create some tables first to get SQL hints.",
+      });
+    }
 
-        return `Table: ${table.tableName}\nColumns:\n${columns}`;
-      })
-      .join("\n\n");
+    // Generate hint using LLM
+    let hintResult;
 
-    // PLACEHOLDER: In production, call LLM API here
-    // Example prompt:
-    const prompt = `
-You are a helpful SQL tutor. The user is learning SQL and needs a hint (not the full answer).
+    if (error && error.type) {
+      // Generate error-specific hint
+      hintResult = await generateErrorHint({
+        schema: workspace.tables,
+        query: query,
+        error: error,
+      });
+    } else {
+      // Generate general hint
+      hintResult = await generateLLMHint({
+        schema: workspace.tables,
+        userQuery: query,
+        userIntent: intent,
+      });
+    }
 
-Database Schema:
-${schemaContext}
-
-User's current query attempt:
-${query || "User has not started yet"}
-
-Additional context: ${tableContext || "None"}
-
-Provide a helpful hint that guides the user toward the solution without giving away the complete answer. 
-Focus on:
-1. Which tables to use
-2. What type of SQL statement might be needed
-3. Key SQL concepts to consider
-4. Common mistakes to avoid
-
-Keep the hint educational and encouraging.
-`;
-
-    // PLACEHOLDER RESPONSE
-    // In production, you would call:
-    // const llmResponse = await callLLMAPI(prompt);
-
-    const placeholderHint = generatePlaceholderHint(workspace.tables, query);
+    if (!hintResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: hintResult.error,
+        details: hintResult.details,
+      });
+    }
 
     res.json({
       success: true,
       data: {
-        hint: placeholderHint,
+        hint: hintResult.hint,
         context: {
+          tablesUsed: hintResult.schemaUsed,
           tablesAvailable: workspace.tables.map((t) => t.tableName),
-          prompt: prompt, // For debugging, remove in production
+          hasQuery: !!query,
+          hasIntent: !!intent,
+          isErrorHint: !!error,
         },
       },
     });
   } catch (error) {
-    console.error("Error generating hint:", error);
+    console.error("Error in hint controller:", error);
     res.status(500).json({
       success: false,
       error: "Failed to generate hint",
@@ -89,76 +104,66 @@ Keep the hint educational and encouraging.
 }
 
 /**
- * Generate a simple rule-based hint (placeholder for LLM)
- */
-function generatePlaceholderHint(tables, query) {
-  if (!query || query.trim() === "") {
-    return `Start by identifying which table(s) you need. Available tables: ${tables
-      .map((t) => t.tableName)
-      .join(", ")}. What data are you trying to retrieve or modify?`;
-  }
-
-  const lowerQuery = query.toLowerCase();
-
-  // Detect query type
-  if (lowerQuery.includes("select")) {
-    if (!lowerQuery.includes("from")) {
-      return "Hint: A SELECT statement needs a FROM clause to specify which table to query. Try adding FROM <table_name>.";
-    }
-    if (!lowerQuery.includes("where") && tables.length > 0) {
-      return "Hint: Consider if you need a WHERE clause to filter your results. Not all queries need one, but they are useful for getting specific data.";
-    }
-    return "Hint: Check if you have specified all the columns you need in your SELECT clause, and verify the table name is correct.";
-  }
-
-  if (lowerQuery.includes("insert")) {
-    if (!lowerQuery.includes("values")) {
-      return "Hint: An INSERT statement needs a VALUES clause to specify what data to insert. Syntax: INSERT INTO table (columns) VALUES (values).";
-    }
-    return "Hint: Make sure the number of columns matches the number of values, and the data types are correct.";
-  }
-
-  if (lowerQuery.includes("update")) {
-    if (!lowerQuery.includes("set")) {
-      return "Hint: An UPDATE statement needs a SET clause to specify which columns to update. Syntax: UPDATE table SET column = value.";
-    }
-    if (!lowerQuery.includes("where")) {
-      return "Hint: Be careful! Without a WHERE clause, UPDATE will modify ALL rows in the table. Add WHERE to target specific rows.";
-    }
-    return "Hint: Verify the column names and values in your SET clause are correct.";
-  }
-
-  if (lowerQuery.includes("delete")) {
-    if (!lowerQuery.includes("where")) {
-      return "Hint: Warning! DELETE without WHERE will remove ALL rows from the table. Use WHERE to specify which rows to delete.";
-    }
-    return "Hint: Make sure your WHERE clause correctly identifies the rows you want to delete.";
-  }
-
-  // Generic hint
-  return `Think about what you are trying to accomplish. Common SQL commands: SELECT (retrieve data), INSERT (add data), UPDATE (modify data), DELETE (remove data). Available tables: ${tables
-    .map((t) => t.tableName)
-    .join(", ")}.`;
-}
-
-/**
- * TODO: Implement actual LLM integration
- * Example function signature for future implementation:
+ * POST /api/hint/explain-error
+ * Get hint specifically for understanding and fixing an error
  *
- * async function callLLMAPI(prompt) {
- *   const response = await openai.chat.completions.create({
- *     model: "gpt-4",
- *     messages: [
- *       { role: "system", content: "You are a helpful SQL tutor." },
- *       { role: "user", content: prompt }
- *     ],
- *     temperature: 0.7,
- *     max_tokens: 200
- *   });
- *   return response.choices[0].message.content;
- * }
+ * Request Body:
+ * - workspaceId: string (required)
+ * - query: string (required)
+ * - error: object (required) - Error from query execution
  */
+async function explainError(req, res) {
+  try {
+    const { workspaceId, query, error } = req.body;
+
+    if (!workspaceId || !query || !error) {
+      return res.status(400).json({
+        success: false,
+        error: "Workspace ID, query, and error are required",
+      });
+    }
+
+    const workspace = await Workspace.findByWorkspaceId(workspaceId);
+
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        error: "Workspace not found",
+      });
+    }
+
+    const hintResult = await generateErrorHint({
+      schema: workspace.tables,
+      query: query,
+      error: error,
+    });
+
+    if (!hintResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: hintResult.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        explanation: hintResult.hint,
+        errorType: error.type,
+        originalError: error.message,
+      },
+    });
+  } catch (error) {
+    console.error("Error explaining error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to explain error",
+      message: error.message,
+    });
+  }
+}
 
 module.exports = {
   generateHint,
+  explainError,
 };

@@ -20,9 +20,18 @@ const {
   validateInsertData,
   validateWorkspaceId,
 } = require("../middlewares/validators");
+const {
+  workspaceLimiter,
+  tableLimiter,
+} = require("../middlewares/rateLimiter.middleware");
 
 // Workspace CRUD operations
-router.post("/workspace", validateCreateWorkspace, createWorkspace);
+router.post(
+  "/workspace",
+  workspaceLimiter,
+  validateCreateWorkspace,
+  createWorkspace
+);
 router.get("/workspace/:id", validateWorkspaceId, getWorkspace);
 router.put(
   "/workspace/:id",
@@ -36,6 +45,7 @@ router.get("/workspaces", getAllWorkspaces);
 // Table operations
 router.post(
   "/workspace/:id/table",
+  tableLimiter,
   validateWorkspaceId,
   validateCreateTable,
   createNewTable

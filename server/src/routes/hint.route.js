@@ -1,8 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { generateHint } = require("../controllers/hint.controller");
+const {
+  generateHint,
+  explainError,
+} = require("../controllers/hint.controller");
+const { hintLimiter } = require("../middlewares/rateLimiter.middleware");
 
-// Generate AI hint for query writing
-router.post("/hint", generateHint);
+// Apply rate limiting to hint endpoints
+router.post("/hint", hintLimiter, generateHint);
+router.post("/hint/explain-error", hintLimiter, explainError);
 
 module.exports = router;

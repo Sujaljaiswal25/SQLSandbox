@@ -8,10 +8,12 @@ const {
   validateExecuteQuery,
   validateWorkspaceId,
 } = require("../middlewares/validators");
+const { queryLimiter } = require("../middlewares/rateLimiter.middleware");
 
 // Execute SQL query
 router.post(
   "/workspace/:id/execute",
+  queryLimiter,
   validateWorkspaceId,
   validateExecuteQuery,
   executeQueryHandler

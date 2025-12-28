@@ -156,11 +156,24 @@ export const getQueryHistory = async (workspaceId, limit = 20) => {
 /**
  * Get AI hint for query
  */
-export const getHint = async (workspaceId, query, tableContext) => {
+export const getHint = async (workspaceId, query, intent, error) => {
   const response = await api.post("/hint", {
     workspaceId,
     query,
-    tableContext,
+    intent,
+    error,
+  });
+  return response.data;
+};
+
+/**
+ * Get explanation for query error
+ */
+export const explainError = async (workspaceId, query, error) => {
+  const response = await api.post("/hint/explain-error", {
+    workspaceId,
+    query,
+    error,
   });
   return response.data;
 };
