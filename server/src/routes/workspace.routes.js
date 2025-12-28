@@ -1,0 +1,63 @@
+const express = require("express");
+const router = express.Router();
+const {
+  createWorkspace,
+  getWorkspace,
+  updateWorkspace,
+  deleteWorkspace,
+  getAllWorkspaces,
+} = require("../controllers/workspaceController");
+const {
+  createNewTable,
+  getTables,
+  getTableDetails,
+  deleteTable,
+  insertData,
+} = require("../controllers/tableController");
+const {
+  validateCreateWorkspace,
+  validateCreateTable,
+  validateInsertData,
+  validateWorkspaceId,
+} = require("../middlewares/validators");
+
+// Workspace CRUD operations
+router.post("/workspace", validateCreateWorkspace, createWorkspace);
+router.get("/workspace/:id", validateWorkspaceId, getWorkspace);
+router.put(
+  "/workspace/:id",
+  validateWorkspaceId,
+  validateCreateWorkspace,
+  updateWorkspace
+);
+router.delete("/workspace/:id", validateWorkspaceId, deleteWorkspace);
+router.get("/workspaces", getAllWorkspaces);
+
+// Table operations
+router.post(
+  "/workspace/:id/table",
+  validateWorkspaceId,
+  validateCreateTable,
+  createNewTable
+);
+router.get("/workspace/:id/tables", validateWorkspaceId, getTables);
+router.get(
+  "/workspace/:id/table/:tableName",
+  validateWorkspaceId,
+  getTableDetails
+);
+router.delete(
+  "/workspace/:id/table/:tableName",
+  validateWorkspaceId,
+  deleteTable
+);
+
+// Data insertion
+router.post(
+  "/workspace/:id/table/:tableName/data",
+  validateWorkspaceId,
+  validateInsertData,
+  insertData
+);
+
+module.exports = router;

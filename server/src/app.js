@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const routes = require("./routes");
 
 const app = express();
 
@@ -25,8 +26,8 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Routes will be added here
-// app.use('/api', routes);
+// API Routes
+app.use("/api", routes);
 
 // 404 handler
 app.use((req, res) => {
