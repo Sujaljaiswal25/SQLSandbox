@@ -1,36 +1,46 @@
-const Workspace = require("../models/Workspace");
-const { executeQuery } = require("../services/postgresService");
+const Workspace = require("../models/workspace.model");
+const { executeQuery } = require("../services/postgres.service");
 
 /**
  * Parse PostgreSQL error and return user-friendly message
  */
 function parsePostgresError(error) {
   const errorMessage = error.message || error;
+  const errorCode = error.code;
 
-  // Syntax errors
-  if (errorMessage.includes("syntax error")) {
+  // PostgreSQL error codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
+
+  // Syntax errors (42601)
+  if (errorCode === "42601" || errorMessage.includes("syntax error")) {
     const match = errorMessage.match(/syntax error at or near "(.+?)"/);
     const nearWord = match ? match[1] : "";
+    const position = errorMessage.match(/LINE (\d+):/);
+    const line = position ? position[1] : null;
 
     return {
       type: "SYNTAX_ERROR",
-      message: `Syntax error near '${nearWord}'`,
+      code: errorCode,
+      message: `Syntax error near '${nearWord}'${
+        line ? ` at line ${line}` : ""
+      }`,
       suggestion:
         "Check your SQL syntax. Common mistakes: missing semicolons, incorrect keywords, or typos.",
       original: errorMessage,
     };
   }
 
-  // Table not found
+  // Table not found (42P01)
   if (
-    errorMessage.includes("does not exist") &&
-    errorMessage.includes("relation")
+    errorCode === "42P01" ||
+    (errorMessage.includes("does not exist") &&
+      errorMessage.includes("relation"))
   ) {
     const match = errorMessage.match(/relation "(.+?)" does not exist/);
     const tableName = match ? match[1] : "unknown";
 
     return {
       type: "TABLE_NOT_FOUND",
+      code: errorCode,
       message: `Table '${tableName}' does not exist`,
       suggestion:
         "Make sure the table name is correct and the table has been created.",
@@ -38,16 +48,17 @@ function parsePostgresError(error) {
     };
   }
 
-  // Column not found
+  // Column not found (42703)
   if (
-    errorMessage.includes("does not exist") &&
-    errorMessage.includes("column")
+    errorCode === "42703" ||
+    (errorMessage.includes("does not exist") && errorMessage.includes("column"))
   ) {
     const match = errorMessage.match(/column "(.+?)" does not exist/);
     const columnName = match ? match[1] : "unknown";
 
     return {
       type: "COLUMN_NOT_FOUND",
+      code: errorCode,
       message: `Column '${columnName}' does not exist`,
       suggestion:
         "Check the column name spelling and make sure it exists in the table.",
@@ -55,33 +66,116 @@ function parsePostgresError(error) {
     };
   }
 
-  // Data type mismatch
-  if (errorMessage.includes("invalid input syntax for type")) {
+  // Data type mismatch (22P02, 22003, 22007, 22008)
+  if (
+    ["22P02", "22003", "22007", "22008"].includes(errorCode) ||
+    errorMessage.includes("invalid input syntax for type")
+  ) {
     const match = errorMessage.match(/invalid input syntax for type (.+?):/);
     const dataType = match ? match[1] : "unknown";
 
     return {
       type: "DATA_TYPE_MISMATCH",
+      code: errorCode,
       message: `Invalid value for data type ${dataType}`,
       suggestion: "Make sure the value matches the expected data type.",
       original: errorMessage,
     };
   }
 
-  // Division by zero
-  if (errorMessage.includes("division by zero")) {
+  // Division by zero (22012)
+  if (errorCode === "22012" || errorMessage.includes("division by zero")) {
     return {
       type: "DIVISION_BY_ZERO",
+      code: errorCode,
       message: "Division by zero error",
       suggestion: "Check your calculation - you cannot divide by zero.",
       original: errorMessage,
     };
   }
 
-  // Permission denied
-  if (errorMessage.includes("permission denied")) {
+  // Unique violation (23505)
+  if (errorCode === "23505" || errorMessage.includes("duplicate key value")) {
+    const match = errorMessage.match(/Key \((.+?)\)=\((.+?)\)/);
+    const key = match ? `${match[1]}=${match[2]}` : "";
+
+    return {
+      type: "UNIQUE_VIOLATION",
+      code: errorCode,
+      message: `Duplicate key value violates unique constraint${
+        key ? `: ${key}` : ""
+      }`,
+      suggestion:
+        "This value already exists. Use a different value or update the existing record.",
+      original: errorMessage,
+    };
+  }
+
+  // Foreign key violation (23503)
+  if (
+    errorCode === "23503" ||
+    errorMessage.includes("foreign key constraint")
+  ) {
+    return {
+      type: "FOREIGN_KEY_VIOLATION",
+      code: errorCode,
+      message: "Foreign key constraint violation",
+      suggestion:
+        "The referenced record does not exist or cannot be deleted due to dependent records.",
+      original: errorMessage,
+    };
+  }
+
+  // Not null violation (23502)
+  if (errorCode === "23502" || errorMessage.includes("null value in column")) {
+    const match = errorMessage.match(/null value in column "(.+?)"/);
+    const column = match ? match[1] : "unknown";
+
+    return {
+      type: "NOT_NULL_VIOLATION",
+      code: errorCode,
+      message: `NULL value not allowed in column '${column}'`,
+      suggestion: "This column requires a value. Provide a non-null value.",
+      original: errorMessage,
+    };
+  }
+
+  // Undefined function (42883)
+  if (
+    errorCode === "42883" ||
+    (errorMessage.includes("function") &&
+      errorMessage.includes("does not exist"))
+  ) {
+    const match = errorMessage.match(/function (.+?) does not exist/);
+    const func = match ? match[1] : "unknown";
+
+    return {
+      type: "UNDEFINED_FUNCTION",
+      code: errorCode,
+      message: `Function '${func}' does not exist`,
+      suggestion:
+        "Check the function name and arguments. Make sure you're using a valid SQL function.",
+      original: errorMessage,
+    };
+  }
+
+  // Ambiguous column (42702)
+  if (errorCode === "42702" || errorMessage.includes("ambiguous")) {
+    return {
+      type: "AMBIGUOUS_COLUMN",
+      code: errorCode,
+      message: "Column reference is ambiguous",
+      suggestion:
+        "Specify the table name to disambiguate (e.g., table_name.column_name).",
+      original: errorMessage,
+    };
+  }
+
+  // Permission denied (42501)
+  if (errorCode === "42501" || errorMessage.includes("permission denied")) {
     return {
       type: "PERMISSION_DENIED",
+      code: errorCode,
       message: "Permission denied",
       suggestion: "You do not have permission to perform this operation.",
       original: errorMessage,
@@ -91,6 +185,7 @@ function parsePostgresError(error) {
   // Generic error
   return {
     type: "QUERY_ERROR",
+    code: errorCode || "UNKNOWN",
     message: errorMessage,
     suggestion: "Please check your query and try again.",
     original: errorMessage,

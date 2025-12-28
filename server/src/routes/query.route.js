@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   executeQueryHandler,
   getQueryHistory,
-} = require("../controllers/queryController");
+} = require("../controllers/query.controller");
 const {
   validateExecuteQuery,
   validateWorkspaceId,

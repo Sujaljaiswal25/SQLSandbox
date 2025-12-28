@@ -1,4 +1,4 @@
-const Workspace = require("../models/Workspace");
+const Workspace = require("../models/workspace.model");
 const {
   createTable,
   dropTable,
@@ -6,8 +6,8 @@ const {
   getTablesInSchema,
   getTableStructure,
   getTableData,
-} = require("../services/postgresService");
-const { isValidDataType } = require("../utils/dataTypeMapping");
+} = require("../services/postgres.service");
+const { isValidDataType } = require("../utils/dataTypeMapping.util");
 
 /**
  * POST /api/workspace/:id/table

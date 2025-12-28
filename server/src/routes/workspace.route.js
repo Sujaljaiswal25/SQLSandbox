@@ -6,14 +6,14 @@ const {
   updateWorkspace,
   deleteWorkspace,
   getAllWorkspaces,
-} = require("../controllers/workspaceController");
+} = require("../controllers/workspace.controller");
 const {
   createNewTable,
   getTables,
   getTableDetails,
   deleteTable,
   insertData,
-} = require("../controllers/tableController");
+} = require("../controllers/table.controller");
 const {
   validateCreateWorkspace,
   validateCreateTable,

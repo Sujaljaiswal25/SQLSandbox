@@ -2,9 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 // Import route modules
-const workspaceRoutes = require("./workspace.routes");
-const queryRoutes = require("./query.routes");
-const hintRoutes = require("./hint.routes");
+const workspaceRoutes = require("./workspace.route");
+const queryRoutes = require("./query.route");
+const hintRoutes = require("./hint.route");
 
 // Mount routes
 router.use("/", workspaceRoutes);

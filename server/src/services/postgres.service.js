@@ -1,5 +1,6 @@
-const { query, getClient } = require("../configs/postgres");
-const { mapToPostgresType } = require("../utils/dataTypeMapping");
+const { query, getClient } = require("../configs/postgres.config");
+const { mapToPostgresType } = require("../utils/dataTypeMapping.util");
+const { convertSchemaToSQL } = require("../utils/schemaConverter.util");
 
 /**
  * Create a new PostgreSQL schema for a workspace
@@ -206,6 +207,156 @@ async function getTableData(schemaName, tableName) {
   }
 }
 
+/**
+ * Check if a workspace schema exists in PostgreSQL
+ */
+async function schemaExists(schemaName) {
+  const checkQuery = `
+    SELECT schema_name 
+    FROM information_schema.schemata 
+    WHERE schema_name = $1
+  `;
+
+  try {
+    const result = await query(checkQuery, [schemaName]);
+    return result.rows.length > 0;
+  } catch (error) {
+    console.error(`Error checking schema existence:`, error);
+    return false;
+  }
+}
+
+/**
+ * Reconstruct workspace schema from MongoDB metadata
+ * Used when workspace exists in MongoDB but not in PostgreSQL
+ * @param {string} schemaName - PostgreSQL schema name
+ * @param {Array} tables - Table definitions from MongoDB
+ */
+async function reconstructWorkspace(schemaName, tables) {
+  const client = await getClient();
+  const reconstructedTables = [];
+  const errors = [];
+
+  try {
+    await client.query("BEGIN");
+
+    // Create schema if doesn't exist
+    await client.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
+    console.log(`Schema ${schemaName} created/verified`);
+
+    // Reconstruct each table
+    for (const table of tables) {
+      try {
+        // Convert table definition to SQL
+        const conversion = convertSchemaToSQL(table, schemaName);
+
+        if (!conversion.success) {
+          errors.push({
+            tableName: table.tableName,
+            errors: conversion.errors,
+          });
+          continue;
+        }
+
+        // Execute all SQL statements (CREATE TABLE + INSERTs)
+        for (const statement of conversion.sqlStatements) {
+          await client.query(statement.sql);
+        }
+
+        reconstructedTables.push({
+          tableName: table.tableName,
+          columnCount: table.columns.length,
+          rowCount: table.rows ? table.rows.length : 0,
+        });
+
+        console.log(`Reconstructed table: ${schemaName}.${table.tableName}`);
+      } catch (error) {
+        errors.push({
+          tableName: table.tableName,
+          errors: [error.message],
+        });
+        console.error(`Error reconstructing table ${table.tableName}:`, error);
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      success: errors.length === 0,
+      reconstructedTables,
+      errors,
+      summary: {
+        totalTables: tables.length,
+        successfulTables: reconstructedTables.length,
+        failedTables: errors.length,
+      },
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error reconstructing workspace:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Verify and sync workspace
+ * Checks if PostgreSQL schema exists and matches MongoDB metadata
+ * Reconstructs if needed
+ */
+async function verifyAndSyncWorkspace(workspaceId, schemaName, tables) {
+  try {
+    const exists = await schemaExists(schemaName);
+
+    if (!exists) {
+      console.log(`Schema ${schemaName} not found. Reconstructing...`);
+      const result = await reconstructWorkspace(schemaName, tables);
+      return {
+        synced: true,
+        reconstructed: true,
+        ...result,
+      };
+    }
+
+    // Schema exists - verify tables match
+    const existingTables = await getTablesInSchema(schemaName);
+    const expectedTables = tables.map((t) => t.tableName);
+
+    const missingTables = expectedTables.filter(
+      (t) => !existingTables.includes(t)
+    );
+
+    if (missingTables.length > 0) {
+      console.log(`Missing tables detected: ${missingTables.join(", ")}`);
+      // Reconstruct only missing tables
+      const tablesToReconstruct = tables.filter((t) =>
+        missingTables.includes(t.tableName)
+      );
+      const result = await reconstructWorkspace(
+        schemaName,
+        tablesToReconstruct
+      );
+      return {
+        synced: true,
+        reconstructed: true,
+        partial: true,
+        missingTables,
+        ...result,
+      };
+    }
+
+    return {
+      synced: true,
+      reconstructed: false,
+      message: "Workspace schema is in sync",
+    };
+  } catch (error) {
+    console.error("Error verifying workspace:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   createWorkspaceSchema,
   dropWorkspaceSchema,
@@ -216,4 +367,7 @@ module.exports = {
   getTablesInSchema,
   getTableStructure,
   getTableData,
+  schemaExists,
+  reconstructWorkspace,
+  verifyAndSyncWorkspace,
 };

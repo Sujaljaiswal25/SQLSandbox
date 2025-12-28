@@ -1,4 +1,4 @@
-const Workspace = require("../models/Workspace");
+const Workspace = require("../models/workspace.model");
 
 /**
  * POST /api/hint

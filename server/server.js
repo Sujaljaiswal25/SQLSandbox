@@ -1,7 +1,7 @@
 require("dotenv").config();
 const app = require("./src/app");
-const connectDB = require("./src/configs/db");
-const { initializePostgres } = require("./src/configs/postgres");
+const connectDB = require("./src/configs/db.config");
+const { initializePostgres } = require("./src/configs/postgres.config");
 
 // Connect to databases
 connectDB();

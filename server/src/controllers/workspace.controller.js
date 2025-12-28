@@ -1,10 +1,11 @@
 const { v4: uuidv4 } = require("uuid");
-const Workspace = require("../models/Workspace");
+const Workspace = require("../models/workspace.model");
 const {
   createWorkspaceSchema,
   dropWorkspaceSchema,
   getTablesInSchema,
-} = require("../services/postgresService");
+  verifyAndSyncWorkspace,
+} = require("../services/postgres.service");
 
 /**
  * POST /api/workspace
@@ -62,6 +63,7 @@ async function createWorkspace(req, res) {
 /**
  * GET /api/workspace/:id
  * Get workspace by ID with all tables and metadata
+ * Automatically verifies and syncs PostgreSQL schema
  */
 async function getWorkspace(req, res) {
   try {
@@ -76,7 +78,15 @@ async function getWorkspace(req, res) {
       });
     }
 
-    // Get actual tables from PostgreSQL
+    // Verify and sync workspace schema
+    // This will reconstruct tables if PostgreSQL schema is missing
+    const syncResult = await verifyAndSyncWorkspace(
+      workspace.workspaceId,
+      workspace.pgSchemaName,
+      workspace.tables
+    );
+
+    // Get actual tables from PostgreSQL after sync
     const pgTables = await getTablesInSchema(workspace.pgSchemaName);
 
     res.json({
@@ -91,6 +101,14 @@ async function getWorkspace(req, res) {
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
       },
+      sync: syncResult.reconstructed
+        ? {
+            reconstructed: true,
+            partial: syncResult.partial || false,
+            summary: syncResult.summary,
+            errors: syncResult.errors,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error fetching workspace:", error);
