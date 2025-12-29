@@ -1,65 +1,38 @@
-/**
- * Data Type Mapping Utility
- * Maps frontend-friendly data types to PostgreSQL data types
- */
-
+// Map friendly data types to PostgreSQL types
 const dataTypeMap = {
-  // Integer types
   INTEGER: "INTEGER",
   INT: "INTEGER",
   BIGINT: "BIGINT",
   SMALLINT: "SMALLINT",
-
-  // Text types
   TEXT: "TEXT",
   VARCHAR: "VARCHAR(255)",
   CHAR: "CHAR(50)",
   STRING: "TEXT",
-
-  // Numeric types
   REAL: "REAL",
   FLOAT: "REAL",
   DOUBLE: "DOUBLE PRECISION",
   DECIMAL: "DECIMAL(10,2)",
   NUMERIC: "NUMERIC(10,2)",
-
-  // Boolean
   BOOLEAN: "BOOLEAN",
   BOOL: "BOOLEAN",
-
-  // Date/Time types
   DATE: "DATE",
   TIME: "TIME",
   TIMESTAMP: "TIMESTAMP",
   DATETIME: "TIMESTAMP",
-
-  // JSON
   JSON: "JSON",
   JSONB: "JSONB",
-
-  // UUID
   UUID: "UUID",
 };
 
-/**
- * Map frontend data type to PostgreSQL data type
- * @param {string} frontendType - Data type from frontend
- * @returns {string} PostgreSQL data type
- */
+// Convert to PostgreSQL type
 function mapToPostgresType(frontendType) {
   const upperType = frontendType.toUpperCase().trim();
 
-  // Check if it's a VARCHAR with length specification
-  if (upperType.startsWith("VARCHAR(")) {
-    return upperType;
-  }
-
-  // Check if it's a DECIMAL/NUMERIC with precision
+  if (upperType.startsWith("VARCHAR(")) return upperType;
   if (upperType.startsWith("DECIMAL(") || upperType.startsWith("NUMERIC(")) {
     return upperType;
   }
 
-  // Map using the dataTypeMap
   const mappedType = dataTypeMap[upperType];
 
   if (!mappedType) {
@@ -73,44 +46,23 @@ function mapToPostgresType(frontendType) {
   return mappedType;
 }
 
-/**
- * Validate if a data type is supported
- * @param {string} dataType - Data type to validate
- * @returns {boolean}
- */
+// Check if data type is valid
 function isValidDataType(dataType) {
   const upperType = dataType.toUpperCase().trim();
 
-  // Check basic types
-  if (dataTypeMap[upperType]) {
-    return true;
-  }
-
-  // Check VARCHAR with length
-  if (/^VARCHAR\(\d+\)$/.test(upperType)) {
-    return true;
-  }
-
-  // Check DECIMAL/NUMERIC with precision
-  if (/^(DECIMAL|NUMERIC)\(\d+,\d+\)$/.test(upperType)) {
-    return true;
-  }
+  if (dataTypeMap[upperType]) return true;
+  if (/^VARCHAR\(\d+\)$/.test(upperType)) return true;
+  if (/^(DECIMAL|NUMERIC)\(\d+,\d+\)$/.test(upperType)) return true;
 
   return false;
 }
 
-/**
- * Get list of all supported data types
- * @returns {Array<string>}
- */
+// Get all supported types
 function getSupportedDataTypes() {
   return Object.keys(dataTypeMap);
 }
 
-/**
- * Get recommended data types for frontend dropdown
- * @returns {Array<Object>}
- */
+// Get recommended types for dropdown
 function getRecommendedDataTypes() {
   return [
     { value: "INTEGER", label: "Integer", description: "Whole numbers" },

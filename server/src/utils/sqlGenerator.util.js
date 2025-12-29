@@ -1,35 +1,21 @@
-/**
- * SQL Statement Generator
- * Generates CREATE TABLE and INSERT statements from schema definitions
- */
-
 const { mapToPostgresType } = require("./dataTypeMapping.util");
 const { sanitizeIdentifier, escapeStringValue } = require("./validators.util");
 
-/**
- * Generate CREATE TABLE statement
- * @param {string} schemaName - PostgreSQL schema name
- * @param {string} tableName - Table name
- * @param {Array} columns - Array of {columnName, dataType}
- * @returns {string} SQL CREATE TABLE statement
- */
+// Generate CREATE TABLE statement
 function generateCreateTableSQL(schemaName, tableName, columns) {
   if (!columns || columns.length === 0) {
     throw new Error("Table must have at least one column");
   }
 
-  // Sanitize identifiers
   const safeSchema = sanitizeIdentifier(schemaName);
   const safeTable = sanitizeIdentifier(tableName);
 
-  // Build column definitions
   const columnDefs = columns.map((col) => {
     const safeColumn = sanitizeIdentifier(col.columnName);
     const pgType = mapToPostgresType(col.dataType);
     return `"${safeColumn}" ${pgType}`;
   });
 
-  // Add auto-incrementing ID as primary key
   const allColumns = ["id SERIAL PRIMARY KEY", ...columnDefs];
 
   const sql = `CREATE TABLE IF NOT EXISTS ${safeSchema}."${safeTable}" (
@@ -39,14 +25,7 @@ function generateCreateTableSQL(schemaName, tableName, columns) {
   return sql;
 }
 
-/**
- * Generate INSERT statement for a single row
- * @param {string} schemaName - PostgreSQL schema name
- * @param {string} tableName - Table name
- * @param {Object} rowData - Row data as key-value pairs
- * @param {Array} columns - Column definitions for data type reference
- * @returns {string} SQL INSERT statement
- */
+// Generate INSERT statement for one row
 function generateInsertSQL(schemaName, tableName, rowData, columns) {
   const safeSchema = sanitizeIdentifier(schemaName);
   const safeTable = sanitizeIdentifier(tableName);
@@ -57,16 +36,11 @@ function generateInsertSQL(schemaName, tableName, rowData, columns) {
     throw new Error("Row data cannot be empty");
   }
 
-  // Build column list
   const safeColumns = columnNames.map((col) => `"${sanitizeIdentifier(col)}"`);
 
-  // Build values list with proper type handling
   const values = columnNames.map((colName) => {
     const value = rowData[colName];
-
-    // Find column definition to get data type
     const colDef = columns?.find((c) => c.columnName === colName);
-
     return formatValue(value, colDef?.dataType);
   });
 
@@ -78,50 +52,27 @@ VALUES (${values.join(", ")});`;
   return sql;
 }
 
-/**
- * Generate multiple INSERT statements
- * @param {string} schemaName - PostgreSQL schema name
- * @param {string} tableName - Table name
- * @param {Array} rows - Array of row objects
- * @param {Array} columns - Column definitions
- * @returns {Array} Array of SQL INSERT statements
- */
+// Generate array of INSERT statements for multiple rows
 function generateBulkInsertSQL(schemaName, tableName, rows, columns) {
-  if (!rows || rows.length === 0) {
-    return [];
-  }
-
+  if (!rows || rows.length === 0) return [];
   return rows.map((row) =>
     generateInsertSQL(schemaName, tableName, row, columns)
   );
 }
 
-/**
- * Format value for SQL based on data type
- * @param {*} value - Value to format
- * @param {string} dataType - Data type (optional)
- * @returns {string} Formatted SQL value
- */
+// Format value based on data type for SQL
 function formatValue(value, dataType) {
-  // Handle NULL
-  if (value === null || value === undefined) {
-    return "NULL";
-  }
+  if (value === null || value === undefined) return "NULL";
 
   if (!dataType) {
-    // Auto-detect type if not provided
-    if (typeof value === "number") {
-      return value;
-    }
-    if (typeof value === "boolean") {
-      return value ? "TRUE" : "FALSE";
-    }
+    if (typeof value === "number") return value;
+    if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
     return escapeStringValue(value);
   }
 
   const upperType = dataType.toUpperCase().trim();
 
-  // Numbers (no quotes)
+  // Numbers don't need quotes
   if (
     upperType.includes("INT") ||
     upperType.includes("REAL") ||
@@ -135,7 +86,6 @@ function formatValue(value, dataType) {
 
   // Booleans
   if (upperType.includes("BOOL")) {
-    // Convert to boolean first
     let boolValue = value;
     if (typeof value === "string") {
       const lower = value.toLowerCase();
@@ -146,59 +96,37 @@ function formatValue(value, dataType) {
 
   // JSON types
   if (upperType === "JSON" || upperType === "JSONB") {
-    if (typeof value === "object") {
+    if (typeof value === "object")
       return escapeStringValue(JSON.stringify(value));
-    }
     return escapeStringValue(value);
   }
 
-  // Everything else (TEXT, VARCHAR, DATE, TIMESTAMP, etc.) - quote it
+  // Everything else needs quotes (TEXT, VARCHAR, DATE, TIMESTAMP, etc.)
   return escapeStringValue(value);
 }
 
-/**
- * Generate DROP TABLE statement
- * @param {string} schemaName - PostgreSQL schema name
- * @param {string} tableName - Table name
- * @returns {string} SQL DROP TABLE statement
- */
+// Drop table if exists
 function generateDropTableSQL(schemaName, tableName) {
   const safeSchema = sanitizeIdentifier(schemaName);
   const safeTable = sanitizeIdentifier(tableName);
-
   return `DROP TABLE IF EXISTS ${safeSchema}."${safeTable}" CASCADE;`;
 }
 
-/**
- * Generate CREATE SCHEMA statement
- * @param {string} schemaName - Schema name
- * @returns {string} SQL CREATE SCHEMA statement
- */
+// Create schema if not exists
 function generateCreateSchemaSQL(schemaName) {
   const safeSchema = sanitizeIdentifier(schemaName);
-
   return `CREATE SCHEMA IF NOT EXISTS ${safeSchema};`;
 }
 
-/**
- * Generate DROP SCHEMA statement
- * @param {string} schemaName - Schema name
- * @returns {string} SQL DROP SCHEMA statement
- */
+// Drop schema if exists
 function generateDropSchemaSQL(schemaName) {
   const safeSchema = sanitizeIdentifier(schemaName);
-
   return `DROP SCHEMA IF EXISTS ${safeSchema} CASCADE;`;
 }
 
-/**
- * Generate SET search_path statement
- * @param {string} schemaName - Schema name
- * @returns {string} SQL SET statement
- */
+// Set search path to specific schema
 function generateSetSearchPathSQL(schemaName) {
   const safeSchema = sanitizeIdentifier(schemaName);
-
   return `SET search_path TO ${safeSchema}, public;`;
 }
 

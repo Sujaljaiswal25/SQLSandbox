@@ -1,8 +1,4 @@
-/**
- * Validation Utilities for Schema and Data
- */
-
-// SQL Reserved Words (partial list - most common ones)
+// SQL reserved words (most common)
 const SQL_RESERVED_WORDS = new Set([
   "SELECT",
   "FROM",
@@ -56,14 +52,7 @@ const SQL_RESERVED_WORDS = new Set([
   "END",
 ]);
 
-/**
- * Validate table name
- * Rules:
- * - Must start with letter
- * - Only alphanumeric and underscore
- * - Max 63 characters
- * - Cannot be SQL reserved word
- */
+// Validate table name
 function validateTableName(tableName) {
   const errors = [];
 
@@ -73,7 +62,6 @@ function validateTableName(tableName) {
 
   const trimmedName = tableName.trim();
 
-  // Check if empty after trim
   if (trimmedName.length === 0) {
     errors.push("Table name cannot be empty");
   }
@@ -145,17 +133,11 @@ function validateColumnName(columnName) {
     );
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  return { valid: errors.length === 0, errors };
 }
 
-/**
- * Validate data type value against expected type
- */
+// Validate data value against type
 function validateDataValue(value, dataType) {
-  // NULL is valid for any type
   if (value === null || value === undefined || value === "") {
     return { valid: true, value: null };
   }
@@ -166,7 +148,6 @@ function validateDataValue(value, dataType) {
     case "INTEGER":
     case "BIGINT":
     case "SMALLINT":
-      // Check if valid integer
       const intValue = Number(value);
       if (!Number.isInteger(intValue)) {
         return {
@@ -180,7 +161,6 @@ function validateDataValue(value, dataType) {
     case "FLOAT":
     case "DOUBLE":
     case "DOUBLE PRECISION":
-      // Check if valid number
       const floatValue = Number(value);
       if (isNaN(floatValue)) {
         return {
@@ -194,7 +174,6 @@ function validateDataValue(value, dataType) {
     case "NUMERIC":
     case "DECIMAL(10,2)":
     case "NUMERIC(10,2)":
-      // Check if valid decimal
       const decimalValue = Number(value);
       if (isNaN(decimalValue)) {
         return {
@@ -209,7 +188,6 @@ function validateDataValue(value, dataType) {
     case "VARCHAR(255)":
     case "CHAR":
     case "CHAR(50)":
-      // Any string is valid
       return { valid: true, value: String(value) };
 
     case "BOOLEAN":
@@ -241,16 +219,12 @@ function validateDataValue(value, dataType) {
       }
       const dateObj = new Date(value);
       if (isNaN(dateObj.getTime())) {
-        return {
-          valid: false,
-          error: `Value '${value}' is not a valid date`,
-        };
+        return { valid: false, error: `Value '${value}' is not a valid date` };
       }
       return { valid: true, value: String(value) };
 
     case "TIMESTAMP":
     case "DATETIME":
-      // Check if valid timestamp
       const timestampObj = new Date(value);
       if (isNaN(timestampObj.getTime())) {
         return {
@@ -262,7 +236,6 @@ function validateDataValue(value, dataType) {
 
     case "JSON":
     case "JSONB":
-      // Try to parse JSON
       try {
         if (typeof value === "object") {
           return { valid: true, value: JSON.stringify(value) };
@@ -270,21 +243,15 @@ function validateDataValue(value, dataType) {
         JSON.parse(value);
         return { valid: true, value: String(value) };
       } catch (error) {
-        return {
-          valid: false,
-          error: `Value '${value}' is not valid JSON`,
-        };
+        return { valid: false, error: `Value '${value}' is not valid JSON` };
       }
 
     default:
-      // Unknown type, accept as-is
       return { valid: true, value };
   }
 }
 
-/**
- * Validate entire row against column definitions
- */
+// Validate entire row
 function validateRow(row, columns) {
   const errors = [];
   const validatedRow = {};
@@ -300,16 +267,10 @@ function validateRow(row, columns) {
     }
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-    validatedRow,
-  };
+  return { valid: errors.length === 0, errors, validatedRow };
 }
 
-/**
- * Check for duplicate column names
- */
+// Check for duplicate columns
 function checkDuplicateColumns(columns) {
   const seen = new Set();
   const duplicates = [];
@@ -322,28 +283,17 @@ function checkDuplicateColumns(columns) {
     seen.add(lowerName);
   }
 
-  return {
-    hasDuplicates: duplicates.length > 0,
-    duplicates,
-  };
+  return { hasDuplicates: duplicates.length > 0, duplicates };
 }
 
-/**
- * Sanitize input to prevent SQL injection
- */
+// Sanitize identifier (prevent SQL injection)
 function sanitizeIdentifier(identifier) {
-  // Remove any quotes and ensure only valid characters
   return identifier.replace(/[^a-zA-Z0-9_]/g, "");
 }
 
-/**
- * Escape string values for SQL
- */
+// Escape string values for SQL
 function escapeStringValue(value) {
-  if (value === null || value === undefined) {
-    return "NULL";
-  }
-  // Replace single quotes with two single quotes (SQL standard)
+  if (value === null || value === undefined) return "NULL";
   return "'" + String(value).replace(/'/g, "''") + "'";
 }
 

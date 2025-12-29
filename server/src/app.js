@@ -1,15 +1,21 @@
+
 const express = require("express");
 const cors = require("cors");
-const routes = require("./routes");
+
+
+const workspaceRoutes = require("./routes/workspace.route");
+const queryRoutes = require("./routes/query.route");
+const hintRoutes = require("./routes/hint.route");
 
 const app = express();
 
-// Middleware
 app.use(cors());
+
 app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
-// Health check route
+
 app.get("/", (req, res) => {
   res.json({
     status: "success",
@@ -18,6 +24,7 @@ app.get("/", (req, res) => {
   });
 });
 
+// Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "healthy",
@@ -26,10 +33,11 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API Routes
-app.use("/api", routes);
+app.use("/api", workspaceRoutes); // Workspace & Table routes
+app.use("/api", queryRoutes); // SQL Query execution routes
+app.use("/api", hintRoutes); // AI Hint routes
 
-// 404 handler
+
 app.use((req, res) => {
   res.status(404).json({
     status: "error",
@@ -37,7 +45,7 @@ app.use((req, res) => {
   });
 });
 
-// Error handling middleware
+// Global error handler
 app.use((err, req, res, next) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({

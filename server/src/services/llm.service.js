@@ -1,18 +1,8 @@
-/**
- * LLM Service for SQL Hints
- * Uses Google Gemini API to generate educational hints
- */
-
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Build schema description from workspace tables
- * @param {Array} tables - Array of table definitions
- * @returns {string} Formatted schema description
- */
+// Build schema text from tables array
 function buildSchemaDescription(tables) {
   if (!tables || tables.length === 0) {
     return "No tables exist in the workspace yet.";
@@ -23,21 +13,12 @@ function buildSchemaDescription(tables) {
       const columnList = table.columns
         .map((col) => `  - ${col.columnName} (${col.dataType})`)
         .join("\n");
-
       return `Table: ${table.tableName}\n${columnList}`;
     })
     .join("\n\n");
 }
 
-/**
- * Build prompt for Gemini API
- * @param {Object} params - Prompt parameters
- * @param {Array} params.schema - Database schema (tables)
- * @param {string} params.userQuery - User's current query attempt
- * @param {string} params.userIntent - What user is trying to achieve
- * @param {string} params.errorContext - Any error they encountered (optional)
- * @returns {string} Complete prompt
- */
+// Create prompt for AI
 function buildPrompt({ schema, userQuery, userIntent, errorContext }) {
   const schemaDescription = buildSchemaDescription(schema);
 
@@ -84,18 +65,9 @@ Provide your hint:`;
   return prompt;
 }
 
-/**
- * Generate SQL hint using Gemini API
- * @param {Object} params - Parameters for hint generation
- * @param {Array} params.schema - Database schema (tables)
- * @param {string} params.userQuery - User's current query attempt
- * @param {string} params.userIntent - What user is trying to achieve
- * @param {string} params.errorContext - Any error they encountered
- * @returns {Promise<Object>} Hint response with success status and message
- */
+// Generate SQL hint using Gemini AI
 async function generateHint({ schema, userQuery, userIntent, errorContext }) {
   try {
-    // Validate input
     if (!schema || schema.length === 0) {
       return {
         success: false,
@@ -111,23 +83,14 @@ async function generateHint({ schema, userQuery, userIntent, errorContext }) {
       };
     }
 
-    // Build prompt
-    const prompt = buildPrompt({
-      schema,
-      userQuery,
-      userIntent,
-      errorContext,
+    const prompt = buildPrompt({ schema, userQuery, userIntent, errorContext });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-preview-09-2025",
     });
 
-    // Get Gemini model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
-
-    // Generate hint
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const hintText = response.text();
-
-    // Clean and validate response
     const cleanedHint = cleanHintResponse(hintText);
 
     if (!cleanedHint || cleanedHint.length < 10) {
@@ -142,7 +105,6 @@ async function generateHint({ schema, userQuery, userIntent, errorContext }) {
   } catch (error) {
     console.error("Error generating hint:", error);
 
-    // Handle specific API errors
     if (error.message?.includes("API key")) {
       return {
         success: false,
@@ -165,37 +127,19 @@ async function generateHint({ schema, userQuery, userIntent, errorContext }) {
   }
 }
 
-/**
- * Clean and format LLM response
- * Remove markdown formatting, extra whitespace, etc.
- * @param {string} hintText - Raw hint text from LLM
- * @returns {string} Cleaned hint text
- */
+// Clean AI response text
 function cleanHintResponse(hintText) {
   if (!hintText) return "";
 
   let cleaned = hintText.trim();
-
-  // Remove markdown code blocks if present
   cleaned = cleaned.replace(/```sql\n/g, "").replace(/```\n?/g, "");
-
-  // Remove excessive newlines
   cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-
-  // Remove "Hint:" prefix if present
   cleaned = cleaned.replace(/^(Hint:|HINT:)\s*/i, "");
 
   return cleaned.trim();
 }
 
-/**
- * Generate context-aware hint based on error
- * @param {Object} params - Parameters
- * @param {Array} params.schema - Database schema
- * @param {string} params.query - Query that caused error
- * @param {Object} params.error - Error object with type and message
- * @returns {Promise<Object>} Hint response
- */
+// Generate hint for SQL error
 async function generateErrorHint({ schema, query, error }) {
   const errorContext = `Error Type: ${error.type}\nError Message: ${error.message}`;
 
@@ -207,14 +151,7 @@ async function generateErrorHint({ schema, query, error }) {
   });
 }
 
-/**
- * Generate hint for query improvement
- * @param {Object} params - Parameters
- * @param {Array} params.schema - Database schema
- * @param {string} params.query - Working query to improve
- * @param {string} params.improvementGoal - What to improve (performance, readability, etc.)
- * @returns {Promise<Object>} Hint response
- */
+// Generate hint to improve query
 async function generateImprovementHint({ schema, query, improvementGoal }) {
   return generateHint({
     schema,

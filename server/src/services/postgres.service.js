@@ -2,10 +2,7 @@ const { query, getClient } = require("../configs/postgres.config");
 const { mapToPostgresType } = require("../utils/dataTypeMapping.util");
 const { convertSchemaToSQL } = require("../utils/schemaConverter.util");
 
-/**
- * Create a new PostgreSQL schema for a workspace
- * Schema naming: ws_{workspaceId}
- */
+// Create isolated schema for workspace
 async function createWorkspaceSchema(workspaceId) {
   const schemaName = `ws_${workspaceId}`;
   try {
@@ -18,9 +15,7 @@ async function createWorkspaceSchema(workspaceId) {
   }
 }
 
-/**
- * Drop a workspace schema and all its tables
- */
+// Delete workspace schema
 async function dropWorkspaceSchema(workspaceId) {
   const schemaName = `ws_${workspaceId}`;
   try {
@@ -33,18 +28,12 @@ async function dropWorkspaceSchema(workspaceId) {
   }
 }
 
-/**
- * Create a table in a workspace schema
- * @param {string} schemaName - PostgreSQL schema name
- * @param {string} tableName - Table name
- * @param {Array} columns - Array of {columnName, dataType}
- */
+// Create table in workspace
 async function createTable(schemaName, tableName, columns) {
   if (!columns || columns.length === 0) {
     throw new Error("Table must have at least one column");
   }
 
-  // Build column definitions
   const columnDefs = columns
     .map((col) => {
       const pgType = mapToPostgresType(col.dataType);
@@ -69,9 +58,7 @@ async function createTable(schemaName, tableName, columns) {
   }
 }
 
-/**
- * Drop a table from a workspace schema
- */
+// Delete table from workspace
 async function dropTable(schemaName, tableName) {
   try {
     await query(`DROP TABLE IF EXISTS ${schemaName}."${tableName}" CASCADE`);
@@ -83,9 +70,7 @@ async function dropTable(schemaName, tableName) {
   }
 }
 
-/**
- * Insert a row into a table
- */
+// Insert row into table
 async function insertRow(schemaName, tableName, rowData) {
   const columns = Object.keys(rowData);
   const values = Object.values(rowData);
@@ -108,24 +93,15 @@ async function insertRow(schemaName, tableName, rowData) {
   }
 }
 
-/**
- * Execute a user-provided SQL query within a workspace schema
- * Security: Set search_path to limit access to only workspace schema
- */
+// Execute SQL query in workspace (isolated)
 async function executeQuery(schemaName, sqlQuery) {
   const client = await getClient();
 
   try {
-    // Begin transaction
     await client.query("BEGIN");
-
-    // Set search path to restrict access to only this workspace's schema
     await client.query(`SET search_path TO ${schemaName}, public`);
 
-    // Execute the user's query
     const result = await client.query(sqlQuery);
-
-    // Commit transaction
     await client.query("COMMIT");
 
     return {
@@ -135,7 +111,6 @@ async function executeQuery(schemaName, sqlQuery) {
       fields: result.fields,
     };
   } catch (error) {
-    // Rollback on error
     await client.query("ROLLBACK");
     console.error("Query execution error:", error);
 
@@ -148,9 +123,7 @@ async function executeQuery(schemaName, sqlQuery) {
   }
 }
 
-/**
- * Get all tables in a workspace schema
- */
+// Get list of tables in workspace
 async function getTablesInSchema(schemaName) {
   const tablesQuery = `
     SELECT table_name 
@@ -169,9 +142,7 @@ async function getTablesInSchema(schemaName) {
   }
 }
 
-/**
- * Get table structure (columns and types)
- */
+// Get table columns and types
 async function getTableStructure(schemaName, tableName) {
   const structureQuery = `
     SELECT 
@@ -194,9 +165,7 @@ async function getTableStructure(schemaName, tableName) {
   }
 }
 
-/**
- * Get all rows from a table
- */
+// Get all rows from table
 async function getTableData(schemaName, tableName) {
   try {
     const result = await query(`SELECT * FROM ${schemaName}."${tableName}"`);
@@ -207,9 +176,7 @@ async function getTableData(schemaName, tableName) {
   }
 }
 
-/**
- * Check if a workspace schema exists in PostgreSQL
- */
+// Check if schema exists
 async function schemaExists(schemaName) {
   const checkQuery = `
     SELECT schema_name 
@@ -226,12 +193,7 @@ async function schemaExists(schemaName) {
   }
 }
 
-/**
- * Reconstruct workspace schema from MongoDB metadata
- * Used when workspace exists in MongoDB but not in PostgreSQL
- * @param {string} schemaName - PostgreSQL schema name
- * @param {Array} tables - Table definitions from MongoDB
- */
+// Rebuild workspace from MongoDB data
 async function reconstructWorkspace(schemaName, tables) {
   const client = await getClient();
   const reconstructedTables = [];
@@ -239,15 +201,11 @@ async function reconstructWorkspace(schemaName, tables) {
 
   try {
     await client.query("BEGIN");
-
-    // Create schema if doesn't exist
     await client.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
     console.log(`Schema ${schemaName} created/verified`);
 
-    // Reconstruct each table
     for (const table of tables) {
       try {
-        // Convert table definition to SQL
         const conversion = convertSchemaToSQL(table, schemaName);
 
         if (!conversion.success) {
@@ -300,11 +258,7 @@ async function reconstructWorkspace(schemaName, tables) {
   }
 }
 
-/**
- * Verify and sync workspace
- * Checks if PostgreSQL schema exists and matches MongoDB metadata
- * Reconstructs if needed
- */
+// Check and sync workspace
 async function verifyAndSyncWorkspace(workspaceId, schemaName, tables) {
   try {
     const exists = await schemaExists(schemaName);
@@ -319,17 +273,14 @@ async function verifyAndSyncWorkspace(workspaceId, schemaName, tables) {
       };
     }
 
-    // Schema exists - verify tables match
     const existingTables = await getTablesInSchema(schemaName);
     const expectedTables = tables.map((t) => t.tableName);
-
     const missingTables = expectedTables.filter(
       (t) => !existingTables.includes(t)
     );
 
     if (missingTables.length > 0) {
       console.log(`Missing tables detected: ${missingTables.join(", ")}`);
-      // Reconstruct only missing tables
       const tablesToReconstruct = tables.filter((t) =>
         missingTables.includes(t.tableName)
       );
@@ -357,15 +308,9 @@ async function verifyAndSyncWorkspace(workspaceId, schemaName, tables) {
   }
 }
 
-/**
- * Sync workspace from PostgreSQL to MongoDB
- * Extracts current state from PostgreSQL and returns data for MongoDB update
- * @param {string} schemaName - PostgreSQL schema name
- * @returns {Promise<Object>} Tables data with columns and rows
- */
+// Sync workspace from PostgreSQL to MongoDB
 async function syncWorkspaceFromPostgres(schemaName) {
   try {
-    // Get all tables in schema
     const tableNames = await getTablesInSchema(schemaName);
 
     if (tableNames.length === 0) {
@@ -378,7 +323,6 @@ async function syncWorkspaceFromPostgres(schemaName) {
 
     const tables = [];
 
-    // For each table, get structure and data
     for (const tableName of tableNames) {
       try {
         // Get table structure (columns)
@@ -386,16 +330,13 @@ async function syncWorkspaceFromPostgres(schemaName) {
 
         // Format columns for MongoDB
         const formattedColumns = columns
-          .filter((col) => col.column_name !== "id") // Exclude auto-generated ID
+          .filter((col) => col.column_name !== "id")
           .map((col) => ({
             columnName: col.column_name,
             dataType: mapPostgresToFriendlyType(col.data_type),
           }));
 
-        // Get table data (rows)
         const rows = await getTableData(schemaName, tableName);
-
-        // Format rows - remove the auto-generated ID column
         const formattedRows = rows.map((row) => {
           const { id, ...rowData } = row;
           return rowData;
@@ -409,7 +350,6 @@ async function syncWorkspaceFromPostgres(schemaName) {
         });
       } catch (error) {
         console.error(`Error syncing table ${tableName}:`, error);
-        // Continue with other tables even if one fails
       }
     }
 
@@ -427,10 +367,7 @@ async function syncWorkspaceFromPostgres(schemaName) {
   }
 }
 
-/**
- * Map PostgreSQL data types back to friendly names
- * Reverse of mapToPostgresType
- */
+// Convert PostgreSQL types back to friendly names
 function mapPostgresToFriendlyType(pgType) {
   const typeMap = {
     integer: "INTEGER",

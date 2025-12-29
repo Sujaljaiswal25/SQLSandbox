@@ -1,7 +1,4 @@
-/**
- * Schema to SQL Conversion
- * Converts table definitions to SQL statements
- */
+// Convert table definitions to SQL statements
 
 const {
   validateTableName,
@@ -15,21 +12,13 @@ const {
   generateBulkInsertSQL,
 } = require("./sqlGenerator.util");
 
-/**
- * Convert schema definition to SQL statements
- * @param {Object} tableDefinition - Table definition object
- * @param {string} tableDefinition.tableName - Table name
- * @param {Array} tableDefinition.columns - Column definitions
- * @param {Array} tableDefinition.rows - Row data (optional)
- * @param {string} schemaName - PostgreSQL schema name
- * @returns {Object} Result with SQL statements and validation errors
- */
+// Convert schema definition to SQL statements
 function convertSchemaToSQL(tableDefinition, schemaName) {
   const { tableName, columns, rows = [] } = tableDefinition;
   const errors = [];
   const sqlStatements = [];
 
-  // Step 1: Validate table name
+  // Validate table name
   const tableValidation = validateTableName(tableName);
   if (!tableValidation.valid) {
     return {
@@ -39,7 +28,7 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
     };
   }
 
-  // Step 2: Validate columns
+  // Validate columns exist
   if (!columns || !Array.isArray(columns) || columns.length === 0) {
     return {
       success: false,
@@ -74,24 +63,17 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
   }
 
   if (errors.length > 0) {
-    return {
-      success: false,
-      errors,
-      sqlStatements: [],
-    };
+    return { success: false, errors, sqlStatements: [] };
   }
 
-  // Step 3: Generate CREATE TABLE statement
+  // Generate CREATE TABLE statement
   try {
     const createTableSQL = generateCreateTableSQL(
       schemaName,
       tableName,
       columns
     );
-    sqlStatements.push({
-      type: "CREATE_TABLE",
-      sql: createTableSQL,
-    });
+    sqlStatements.push({ type: "CREATE_TABLE", sql: createTableSQL });
   } catch (error) {
     return {
       success: false,
@@ -100,7 +82,7 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
     };
   }
 
-  // Step 4: Validate and generate INSERT statements for rows
+  // Validate and generate INSERT statements for rows
   if (rows && rows.length > 0) {
     const validatedRows = [];
     const rowErrors = [];
@@ -117,14 +99,10 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
     }
 
     if (rowErrors.length > 0) {
-      return {
-        success: false,
-        errors: rowErrors,
-        sqlStatements,
-      };
+      return { success: false, errors: rowErrors, sqlStatements };
     }
 
-    // Step 5: Generate INSERT statements
+    // Generate INSERT statements
     try {
       const insertStatements = generateBulkInsertSQL(
         schemaName,
@@ -132,12 +110,8 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
         validatedRows,
         columns
       );
-
       insertStatements.forEach((sql) => {
-        sqlStatements.push({
-          type: "INSERT",
-          sql,
-        });
+        sqlStatements.push({ type: "INSERT", sql });
       });
     } catch (error) {
       return {
@@ -148,7 +122,7 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
     }
   }
 
-  // Step 6: Return result
+  // Return result
   return {
     success: true,
     errors: [],
@@ -162,12 +136,7 @@ function convertSchemaToSQL(tableDefinition, schemaName) {
   };
 }
 
-/**
- * Convert multiple table definitions to SQL
- * @param {Array} tables - Array of table definitions
- * @param {string} schemaName - PostgreSQL schema name
- * @returns {Object} Conversion results
- */
+// Convert multiple tables to SQL in one go
 function convertMultipleTablesToSQL(tables, schemaName) {
   const results = [];
   const allStatements = [];
@@ -202,12 +171,7 @@ function convertMultipleTablesToSQL(tables, schemaName) {
   };
 }
 
-/**
- * Validate table definition without generating SQL
- * Useful for pre-validation before creation
- * @param {Object} tableDefinition - Table definition
- * @returns {Object} Validation result
- */
+// Validate table definition without generating SQL
 function validateTableDefinition(tableDefinition) {
   const { tableName, columns, rows = [] } = tableDefinition;
   const errors = [];
@@ -253,10 +217,7 @@ function validateTableDefinition(tableDefinition) {
     }
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  return { valid: errors.length === 0, errors };
 }
 
 module.exports = {

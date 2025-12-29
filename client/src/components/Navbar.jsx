@@ -7,13 +7,26 @@ const Navbar = () => {
     workspaces,
     switchWorkspace,
     createWorkspace,
-    syncWorkspace,
-    hasUnsavedChanges,
-    lastSyncTime,
+    deleteWorkspace,
   } = useWorkspace();
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+
+  const handleDeleteWorkspace = async () => {
+    if (!currentWorkspace) return;
+
+    if (
+      confirm(
+        `Delete workspace "${currentWorkspace.name}"? This cannot be undone.`
+      )
+    ) {
+      try {
+        await deleteWorkspace(currentWorkspace.workspaceId);
+      } catch (error) {
+        alert("Failed to delete workspace");
+      }
+    }
+  };
 
   const handleSave = async () => {
     if (!currentWorkspace) return;
@@ -76,48 +89,24 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {currentWorkspace && (
               <button
-                onClick={handleSave}
-                disabled={isSaving || !hasUnsavedChanges}
-                className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 font-medium shadow-md ${
-                  hasUnsavedChanges
-                    ? "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-green-500/30"
-                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                }`}
-                title={
-                  lastSyncTime
-                    ? `Last saved: ${lastSyncTime.toLocaleTimeString()}`
-                    : "Not saved yet"
-                }
+                onClick={handleDeleteWorkspace}
+                className="px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 font-medium shadow-md bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-red-500/30"
+                title="Delete current workspace"
               >
                 <svg
-                  className={`h-5 w-5 ${isSaving ? "animate-spin" : ""}`}
+                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  {isSaving ? (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                    />
-                  )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
-                <span>
-                  {isSaving
-                    ? "Saving..."
-                    : hasUnsavedChanges
-                    ? "Save"
-                    : "Saved"}
-                </span>
+                <span>Delete</span>
               </button>
             )}
 

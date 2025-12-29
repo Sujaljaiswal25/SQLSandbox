@@ -1,11 +1,6 @@
-/**
- * Validation Middleware
- * Provides request validation for API endpoints
- */
+// Request validation middleware
 
-/**
- * Validate workspace creation request
- */
+// Validate workspace creation: name required, max 100 chars
 function validateCreateWorkspace(req, res, next) {
   const { name } = req.body;
 
@@ -13,10 +8,7 @@ function validateCreateWorkspace(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "name",
-        message: "Workspace name is required",
-      },
+      details: { field: "name", message: "Workspace name is required" },
     });
   }
 
@@ -45,9 +37,7 @@ function validateCreateWorkspace(req, res, next) {
   next();
 }
 
-/**
- * Validate table creation request
- */
+// Validate table creation: name and columns required
 function validateCreateTable(req, res, next) {
   const { tableName, columns } = req.body;
 
@@ -55,10 +45,7 @@ function validateCreateTable(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "tableName",
-        message: "Table name is required",
-      },
+      details: { field: "tableName", message: "Table name is required" },
     });
   }
 
@@ -73,7 +60,6 @@ function validateCreateTable(req, res, next) {
     });
   }
 
-  // Validate table name (alphanumeric and underscore only)
   if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(tableName)) {
     return res.status(400).json({
       success: false,
@@ -90,10 +76,7 @@ function validateCreateTable(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "columns",
-        message: "Columns must be an array",
-      },
+      details: { field: "columns", message: "Columns must be an array" },
     });
   }
 
@@ -101,10 +84,7 @@ function validateCreateTable(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "columns",
-        message: "At least one column is required",
-      },
+      details: { field: "columns", message: "At least one column is required" },
     });
   }
 
@@ -150,9 +130,7 @@ function validateCreateTable(req, res, next) {
   next();
 }
 
-/**
- * Validate query execution request
- */
+// Validate query execution: non-empty, max 10000 chars
 function validateExecuteQuery(req, res, next) {
   const { query } = req.body;
 
@@ -160,10 +138,7 @@ function validateExecuteQuery(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "query",
-        message: "SQL query is required",
-      },
+      details: { field: "query", message: "SQL query is required" },
     });
   }
 
@@ -171,10 +146,7 @@ function validateExecuteQuery(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "query",
-        message: "Query must be a non-empty string",
-      },
+      details: { field: "query", message: "Query must be a non-empty string" },
     });
   }
 
@@ -192,9 +164,7 @@ function validateExecuteQuery(req, res, next) {
   next();
 }
 
-/**
- * Validate insert data request
- */
+// Validate insert data: rows array, min 1, max 1000 rows
 function validateInsertData(req, res, next) {
   const { rows } = req.body;
 
@@ -202,10 +172,7 @@ function validateInsertData(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "rows",
-        message: "Rows must be an array",
-      },
+      details: { field: "rows", message: "Rows must be an array" },
     });
   }
 
@@ -213,10 +180,7 @@ function validateInsertData(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "rows",
-        message: "At least one row is required",
-      },
+      details: { field: "rows", message: "At least one row is required" },
     });
   }
 
@@ -234,9 +198,7 @@ function validateInsertData(req, res, next) {
   next();
 }
 
-/**
- * Validate workspace ID parameter
- */
+// Validate workspace ID: must be valid UUID v4
 function validateWorkspaceId(req, res, next) {
   const { id } = req.params;
 
@@ -244,14 +206,10 @@ function validateWorkspaceId(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "id",
-        message: "Workspace ID is required",
-      },
+      details: { field: "id", message: "Workspace ID is required" },
     });
   }
 
-  // UUID v4 format validation
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -259,10 +217,7 @@ function validateWorkspaceId(req, res, next) {
     return res.status(400).json({
       success: false,
       error: "Validation failed",
-      details: {
-        field: "id",
-        message: "Invalid workspace ID format",
-      },
+      details: { field: "id", message: "Invalid workspace ID format" },
     });
   }
 

@@ -8,14 +8,16 @@ const {
   syncWorkspaceFromPostgres,
 } = require("../services/postgres.service");
 
-/**
- * POST /api/workspace
- * Create new workspace with MongoDB document and PostgreSQL schema
- */
+// ============================================
+// CREATE WORKSPACE
+// ============================================
+// This creates a new workspace (like a project folder)
+// It creates both a MongoDB record and a PostgreSQL schema
 async function createWorkspace(req, res) {
   try {
     const { name } = req.body;
 
+    // Step 1: Validate workspace name
     if (!name || name.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -23,14 +25,14 @@ async function createWorkspace(req, res) {
       });
     }
 
-    // Generate unique workspace ID
+    // Step 2: Generate unique ID for this workspace
     const workspaceId = uuidv4();
     const pgSchemaName = `ws_${workspaceId.replace(/-/g, "_")}`;
 
-    // Create PostgreSQL schema first
+    // Step 3: Create isolated schema in PostgreSQL (for actual SQL execution)
     await createWorkspaceSchema(workspaceId.replace(/-/g, "_"));
 
-    // Create MongoDB document
+    // Step 4: Save workspace info in MongoDB (for metadata storage)
     const workspace = new Workspace({
       workspaceId,
       name: name.trim(),
@@ -41,6 +43,7 @@ async function createWorkspace(req, res) {
 
     await workspace.save();
 
+    // Step 5: Send success response
     res.status(201).json({
       success: true,
       message: "Workspace created successfully",
@@ -61,15 +64,15 @@ async function createWorkspace(req, res) {
   }
 }
 
-/**
- * GET /api/workspace/:id
- * Get workspace by ID with all tables and metadata
- * Automatically verifies and syncs PostgreSQL schema
- */
+// ============================================
+// GET SINGLE WORKSPACE
+// ============================================
+// This fetches a workspace and syncs its data from PostgreSQL
 async function getWorkspace(req, res) {
   try {
     const { id } = req.params;
 
+    // Step 1: Find workspace in MongoDB
     const workspace = await Workspace.findByWorkspaceId(id);
 
     if (!workspace) {

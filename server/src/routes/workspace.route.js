@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+
+// Import controllers (business logic)
 const {
   createWorkspace,
   getWorkspace,
@@ -15,38 +17,58 @@ const {
   deleteTable,
   insertData,
 } = require("../controllers/table.controller");
+
+// Import validators (input checking)
 const {
   validateCreateWorkspace,
   validateCreateTable,
   validateInsertData,
   validateWorkspaceId,
 } = require("../middlewares/validators");
+
+// Import rate limiters (prevent abuse)
 const {
   workspaceLimiter,
   tableLimiter,
 } = require("../middlewares/rateLimiter.middleware");
 
-// Workspace CRUD operations
+// ============================================
+// WORKSPACE ROUTES
+// ============================================
+
+// Create new workspace
 router.post(
   "/workspace",
-  workspaceLimiter,
-  validateCreateWorkspace,
-  createWorkspace
+  workspaceLimiter, // Limit: 10 workspaces per hour
+  validateCreateWorkspace, // Check if name is provided
+  createWorkspace // Execute the creation
 );
+
+// Get single workspace by ID
 router.get("/workspace/:id", validateWorkspaceId, getWorkspace);
+
+// Update workspace name
 router.put(
   "/workspace/:id",
   validateWorkspaceId,
   validateCreateWorkspace,
   updateWorkspace
 );
+
+// Delete workspace
 router.delete("/workspace/:id", validateWorkspaceId, deleteWorkspace);
+
+// Get all workspaces
 router.get("/workspaces", getAllWorkspaces);
 
-// Workspace sync operation
+// Sync workspace from PostgreSQL to MongoDB
 router.post("/workspace/:id/sync", validateWorkspaceId, syncWorkspace);
 
-// Table operations
+// ============================================
+// TABLE ROUTES (under workspace)
+// ============================================
+
+// Create new table in workspace
 router.post(
   "/workspace/:id/table",
   tableLimiter,
