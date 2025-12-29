@@ -24,14 +24,32 @@ const SQLEditor = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full shadow-lg">
       {/* Toolbar */}
-      <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
-        <h3 className="text-white font-medium">SQL Editor</h3>
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-3 flex items-center justify-between border-b border-slate-700 shadow-md">
         <div className="flex items-center space-x-2">
+          <svg
+            className="h-5 w-5 text-emerald-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <h3 className="text-white font-semibold text-sm">SQL Editor</h3>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-gray-400 mr-2 hidden sm:inline">
+            Press Ctrl+Enter to execute
+          </span>
           <button
             onClick={handleClear}
-            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200"
+            className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
             disabled={isExecuting}
           >
             Clear
@@ -39,7 +57,7 @@ const SQLEditor = () => {
           <button
             onClick={handleExecute}
             disabled={isExecuting || !queryText.trim()}
-            className="px-4 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-4 py-1.5 text-sm bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {isExecuting ? (
               <>
@@ -85,7 +103,7 @@ const SQLEditor = () => {
                     d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span>Execute (Ctrl+Enter)</span>
+                <span>Execute</span>
               </>
             )}
           </button>
@@ -93,7 +111,7 @@ const SQLEditor = () => {
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 border-b border-gray-200">
+      <div className="flex-1 border-b-2 border-slate-200">
         <Editor
           height="100%"
           defaultLanguage="sql"
@@ -109,6 +127,11 @@ const SQLEditor = () => {
             automaticLayout: true,
             tabSize: 2,
             wordWrap: "on",
+            padding: { top: 16, bottom: 16 },
+            fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+            fontLigatures: true,
+            cursorBlinking: "smooth",
+            smoothScrolling: true,
           }}
           onMount={(editor) => {
             // Add Ctrl+Enter keybinding for execution
