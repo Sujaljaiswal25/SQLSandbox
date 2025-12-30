@@ -20,14 +20,24 @@ function buildSchemaDescription(tables) {
 
 // Create prompt for AI
 function buildPrompt({ schema, userQuery, userIntent, errorContext }) {
+  const hasSchema = schema && schema.length > 0;
   const schemaDescription = buildSchemaDescription(schema);
 
   let prompt = `You are a SQL tutor helping a student learn SQL. Your role is to provide HINTS, not complete solutions.
 
-DATABASE SCHEMA:
+`;
+
+  if (hasSchema) {
+    prompt += `DATABASE SCHEMA:
 ${schemaDescription}
 
 `;
+  } else {
+    prompt += `DATABASE SCHEMA:
+No tables exist yet - student is just getting started.
+
+`;
+  }
 
   if (userIntent) {
     prompt += `STUDENT'S GOAL:
@@ -52,7 +62,19 @@ ${errorContext}
 `;
   }
 
-  prompt += `INSTRUCTIONS:
+  // Adjust instructions based on context
+  if (!hasSchema && !userQuery) {
+    prompt += `INSTRUCTIONS:
+1. The student is just getting started with SQL
+2. Provide guidance on fundamental concepts like CREATE TABLE, data types, or basic SELECT queries
+3. Be encouraging and explain concepts simply
+4. Give a concrete example of what they could try first
+5. Keep it concise (2-4 sentences)
+6. Help them understand the basics before moving to advanced topics
+
+Provide your helpful hint:`;
+  } else {
+    prompt += `INSTRUCTIONS:
 1. Provide a helpful HINT to guide the student, but do NOT give the complete solution
 2. Suggest relevant SQL concepts (JOIN, GROUP BY, WHERE, ORDER BY, aggregate functions, etc.)
 3. If there's an error, explain what might be wrong conceptually
@@ -61,6 +83,7 @@ ${errorContext}
 6. Do not write the complete query - only guide them
 
 Provide your hint:`;
+  }
 
   return prompt;
 }
@@ -68,13 +91,6 @@ Provide your hint:`;
 // Generate SQL hint using Gemini AI
 async function generateHint({ schema, userQuery, userIntent, errorContext }) {
   try {
-    if (!schema || schema.length === 0) {
-      return {
-        success: false,
-        error: "No database schema available. Please create some tables first.",
-      };
-    }
-
     if (!userIntent && !userQuery) {
       return {
         success: false,

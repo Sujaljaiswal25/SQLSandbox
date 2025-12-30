@@ -44,14 +44,8 @@ async function generateHint(req, res) {
       });
     }
 
-    // Check if workspace has tables
-    if (!workspace.tables || workspace.tables.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "No tables exist in this workspace. Create some tables first to get SQL hints.",
-      });
-    }
+    // Get workspace tables (may be empty for beginners)
+    const hasNoTables = !workspace.tables || workspace.tables.length === 0;
 
     // Generate hint using LLM
     let hintResult;
@@ -59,14 +53,14 @@ async function generateHint(req, res) {
     if (error && error.type) {
       // Generate error-specific hint
       hintResult = await generateErrorHint({
-        schema: workspace.tables,
+        schema: workspace.tables || [],
         query: query,
         error: error,
       });
     } else {
       // Generate general hint
       hintResult = await generateLLMHint({
-        schema: workspace.tables,
+        schema: workspace.tables || [],
         userQuery: query,
         userIntent: intent,
       });

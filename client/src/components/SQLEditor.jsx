@@ -10,7 +10,6 @@ const SQLEditor = () => {
       alert("Please enter a SQL query");
       return;
     }
-
     try {
       await executeQuery(queryText);
     } catch (error) {
@@ -24,32 +23,40 @@ const SQLEditor = () => {
   };
 
   return (
-    <div className="flex flex-col h-full shadow-lg">
+    <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-3 flex items-center justify-between border-b border-slate-700 shadow-md">
-        <div className="flex items-center space-x-2">
-          <svg
-            className="h-5 w-5 text-emerald-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <h3 className="text-white font-semibold text-sm">SQL Editor</h3>
+      <div className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 px-6 py-3.5 flex items-center justify-between border-b border-slate-700/50 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-500/10 rounded-lg">
+            <svg
+              className="h-5 w-5 text-emerald-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-white font-semibold">SQL Editor</h3>
         </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-400 mr-2 hidden sm:inline">
-            Press Ctrl+Enter to execute
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-slate-700 rounded">
+              Ctrl
+            </kbd>
+            <span className="text-gray-600">+</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-slate-700 rounded">
+              Enter
+            </kbd>
           </span>
           <button
             onClick={handleClear}
-            className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+            className="px-4 py-2 text-sm bg-slate-800/80 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg transition-all shadow-lg border border-slate-700/50"
             disabled={isExecuting}
           >
             Clear
@@ -57,7 +64,7 @@ const SQLEditor = () => {
           <button
             onClick={handleExecute}
             disabled={isExecuting || !queryText.trim()}
-            className="px-4 py-1.5 text-sm bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-5 py-2 text-sm bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white rounded-lg transition-all shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
           >
             {isExecuting ? (
               <>
@@ -111,7 +118,7 @@ const SQLEditor = () => {
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 border-b-2 border-slate-200">
+      <div className="flex-1">
         <Editor
           height="100%"
           defaultLanguage="sql"
@@ -134,7 +141,6 @@ const SQLEditor = () => {
             smoothScrolling: true,
           }}
           onMount={(editor) => {
-            // Add Ctrl+Enter keybinding for execution
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
               () => {

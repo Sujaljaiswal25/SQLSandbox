@@ -25,17 +25,16 @@ export const WorkspaceProvider = ({ children }) => {
 
   const autoSaveTimerRef = useRef(null);
 
-  // Load workspaces on mount
+  // Load workspaces and restore last workspace on mount
   useEffect(() => {
-    loadWorkspaces();
-  }, []);
-
-  // Load workspace from localStorage on mount
-  useEffect(() => {
-    const savedWorkspaceId = localStorage.getItem("currentWorkspaceId");
-    if (savedWorkspaceId) {
-      loadWorkspace(savedWorkspaceId);
-    }
+    const initializeApp = async () => {
+      await loadWorkspaces();
+      const savedWorkspaceId = localStorage.getItem("currentWorkspaceId");
+      if (savedWorkspaceId) {
+        await loadWorkspace(savedWorkspaceId);
+      }
+    };
+    initializeApp();
   }, []);
 
   // Load all workspaces
@@ -147,8 +146,18 @@ export const WorkspaceProvider = ({ children }) => {
         tableData
       );
 
-      // Reload workspace to get updated tables
-      await loadWorkspace(currentWorkspace.workspaceId);
+      // Add new table to state without reloading
+      const newTable = response.data.table;
+      if (newTable) {
+        setTables((prev) => [...prev, newTable]);
+        setCurrentWorkspace((prev) => ({
+          ...prev,
+          tables: [...(prev.tables || []), newTable],
+        }));
+      } else {
+        // Fallback: reload workspace if table structure is unexpected
+        await loadWorkspace(currentWorkspace.workspaceId);
+      }
 
       return response.data;
     } catch (error) {
@@ -195,6 +204,15 @@ export const WorkspaceProvider = ({ children }) => {
       if (response.success) {
         setQueryResults(response.data);
         setQueryError(null);
+
+        // Refresh tables if query modifies schema (CREATE/DROP TABLE)
+        const queryUpper = query.trim().toUpperCase();
+        if (
+          queryUpper.startsWith("CREATE TABLE") ||
+          queryUpper.startsWith("DROP TABLE")
+        ) {
+          await loadWorkspace(currentWorkspace.workspaceId);
+        }
       } else {
         setQueryError(response.error);
         setQueryResults(null);

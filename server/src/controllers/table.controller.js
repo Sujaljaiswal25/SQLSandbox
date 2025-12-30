@@ -81,12 +81,16 @@ async function createNewTable(req, res) {
 
     await workspace.save();
 
+    // Find the created table in the synced workspace
+    const createdTable = workspace.tables.find(
+      (t) => t.tableName === tableName
+    );
+
     res.status(201).json({
       success: true,
       message: "Table created successfully",
       data: {
-        tableName,
-        columns,
+        table: createdTable || { tableName, columns },
       },
     });
   } catch (error) {
