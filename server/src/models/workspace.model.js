@@ -60,10 +60,6 @@ const workspaceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for fast lookups
-workspaceSchema.index({ workspaceId: 1 });
-workspaceSchema.index({ pgSchemaName: 1 });
-
 // Add a table to workspace
 workspaceSchema.methods.addTable = function (tableName, columns) {
   this.tables.push({ tableName, columns, rows: [] });

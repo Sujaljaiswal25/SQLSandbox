@@ -94,7 +94,6 @@ async function createNewTable(req, res) {
       },
     });
   } catch (error) {
-    console.error("Error creating table:", error);
     res.status(500).json({
       success: false,
       error: "Failed to create table",

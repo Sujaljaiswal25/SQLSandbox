@@ -88,7 +88,6 @@ async function generateHint(req, res) {
       },
     });
   } catch (error) {
-    console.error("Error in hint controller:", error);
     res.status(500).json({
       success: false,
       error: "Failed to generate hint",

@@ -55,7 +55,6 @@ async function createWorkspace(req, res) {
       },
     });
   } catch (error) {
-    console.error("Error creating workspace:", error);
     res.status(500).json({
       success: false,
       error: "Failed to create workspace",

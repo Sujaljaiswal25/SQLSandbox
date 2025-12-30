@@ -7,10 +7,8 @@ async function createWorkspaceSchema(workspaceId) {
   const schemaName = `ws_${workspaceId}`;
   try {
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
-    console.log(`Created schema: ${schemaName}`);
     return schemaName;
   } catch (error) {
-    console.error(`Error creating schema ${schemaName}:`, error);
     throw error;
   }
 }
@@ -20,10 +18,8 @@ async function dropWorkspaceSchema(workspaceId) {
   const schemaName = `ws_${workspaceId}`;
   try {
     await query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE`);
-    console.log(`Dropped schema: ${schemaName}`);
     return true;
   } catch (error) {
-    console.error(`Error dropping schema ${schemaName}:`, error);
     throw error;
   }
 }
@@ -50,10 +46,8 @@ async function createTable(schemaName, tableName, columns) {
 
   try {
     await query(createTableQuery);
-    console.log(`Created table: ${schemaName}.${tableName}`);
     return true;
   } catch (error) {
-    console.error(`Error creating table ${tableName}:`, error);
     throw error;
   }
 }
@@ -62,10 +56,8 @@ async function createTable(schemaName, tableName, columns) {
 async function dropTable(schemaName, tableName) {
   try {
     await query(`DROP TABLE IF EXISTS ${schemaName}."${tableName}" CASCADE`);
-    console.log(`Dropped table: ${schemaName}.${tableName}`);
     return true;
   } catch (error) {
-    console.error(`Error dropping table ${tableName}:`, error);
     throw error;
   }
 }
@@ -88,7 +80,6 @@ async function insertRow(schemaName, tableName, rowData) {
     const result = await query(insertQuery, values);
     return result.rows[0];
   } catch (error) {
-    console.error(`Error inserting row into ${tableName}:`, error);
     throw error;
   }
 }
@@ -137,7 +128,6 @@ async function getTablesInSchema(schemaName) {
     const result = await query(tablesQuery, [schemaName]);
     return result.rows.map((row) => row.table_name);
   } catch (error) {
-    console.error("Error fetching tables:", error);
     throw error;
   }
 }
@@ -171,7 +161,6 @@ async function getTableData(schemaName, tableName) {
     const result = await query(`SELECT * FROM ${schemaName}."${tableName}"`);
     return result.rows;
   } catch (error) {
-    console.error("Error fetching table data:", error);
     throw error;
   }
 }

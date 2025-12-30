@@ -119,8 +119,6 @@ async function generateHint({ schema, userQuery, userIntent, errorContext }) {
       schemaUsed: schema.map((t) => t.tableName),
     };
   } catch (error) {
-    console.error("Error generating hint:", error);
-
     if (error.message?.includes("API key")) {
       return {
         success: false,

@@ -1,7 +1,5 @@
-
 const express = require("express");
 const cors = require("cors");
-
 
 const workspaceRoutes = require("./routes/workspace.route");
 const queryRoutes = require("./routes/query.route");
@@ -9,12 +7,18 @@ const hintRoutes = require("./routes/hint.route");
 
 const app = express();
 
-app.use(cors());
+// CORS setup using environment variable
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  })
+);
 
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
-
 
 app.get("/", (req, res) => {
   res.json({
@@ -36,7 +40,6 @@ app.get("/health", (req, res) => {
 app.use("/api", workspaceRoutes); // Workspace & Table routes
 app.use("/api", queryRoutes); // SQL Query execution routes
 app.use("/api", hintRoutes); // AI Hint routes
-
 
 app.use((req, res) => {
   res.status(404).json({
