@@ -137,7 +137,9 @@ export const WorkspaceProvider = ({ children }) => {
 
   // Create table
   const createTable = async (tableData) => {
-    if (!currentWorkspace) throw new Error("No workspace selected");
+    if (!currentWorkspace) {
+      throw new Error("Please create or select a workspace first");
+    }
 
     try {
       setIsLoading(true);
@@ -170,7 +172,9 @@ export const WorkspaceProvider = ({ children }) => {
 
   // Delete table
   const deleteTable = async (tableName) => {
-    if (!currentWorkspace) throw new Error("No workspace selected");
+    if (!currentWorkspace) {
+      throw new Error("Please create or select a workspace first");
+    }
 
     try {
       setIsLoading(true);
@@ -188,8 +192,22 @@ export const WorkspaceProvider = ({ children }) => {
 
   // Execute query
   const executeQuery = async (query) => {
-    if (!currentWorkspace) throw new Error("No workspace selected");
-    if (!query || query.trim() === "") throw new Error("Query cannot be empty");
+    if (!currentWorkspace) {
+      const error = {
+        type: "NO_WORKSPACE",
+        message: "Please create or select a workspace first",
+      };
+      setQueryError(error);
+      throw new Error(error.message);
+    }
+    if (!query || query.trim() === "") {
+      const error = {
+        type: "EMPTY_QUERY",
+        message: "Query cannot be empty",
+      };
+      setQueryError(error);
+      throw new Error(error.message);
+    }
 
     try {
       setIsExecuting(true);

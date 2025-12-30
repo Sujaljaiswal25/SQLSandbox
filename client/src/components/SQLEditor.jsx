@@ -2,10 +2,20 @@ import Editor from "@monaco-editor/react";
 import { useWorkspace } from "../context/WorkspaceContext";
 
 const SQLEditor = () => {
-  const { queryText, setQueryText, executeQuery, isExecuting, clearResults } =
-    useWorkspace();
+  const {
+    queryText,
+    setQueryText,
+    executeQuery,
+    isExecuting,
+    clearResults,
+    currentWorkspace,
+  } = useWorkspace();
 
   const handleExecute = async () => {
+    if (!currentWorkspace) {
+      alert("⚠️ Please create or select a workspace first!");
+      return;
+    }
     if (!queryText.trim()) {
       alert("Please enter a SQL query");
       return;
@@ -13,7 +23,7 @@ const SQLEditor = () => {
     try {
       await executeQuery(queryText);
     } catch (error) {
-      console.error("Execution error:", error);
+      // Error is already handled in context
     }
   };
 

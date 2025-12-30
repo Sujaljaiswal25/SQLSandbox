@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 
 const HintPanel = () => {
-  const { getHint, tables, queryText } = useWorkspace();
+  const { getHint, tables, queryText, currentWorkspace } = useWorkspace();
   const [isOpen, setIsOpen] = useState(true);
   const [hint, setHint] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -10,6 +10,11 @@ const HintPanel = () => {
   const [error, setError] = useState(null);
 
   const handleGetHint = async () => {
+    if (!currentWorkspace) {
+      setError("⚠️ Please create or select a workspace first");
+      return;
+    }
+
     if (!queryText && !intent) {
       setError("Either write a query or describe what you want to do");
       return;
